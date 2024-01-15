@@ -36,13 +36,13 @@ class VmCreator:
             print(" ===> VM already exists:", existingVms)
             return
 
-        availabilityDomains = self._getAvailabilityDomains()
-        print(f" ==> Detected {len(availabilityDomains)} availability domains:")
-        for availabilityDomain in availabilityDomains:
-            print(availabilityDomain)
-        print()
-
         while True:
+            availabilityDomains = self._getAvailabilityDomains()
+            print(f" ==> Detected {len(availabilityDomains)} availability domains:")
+            for availabilityDomain in availabilityDomains:
+                print(availabilityDomain)
+            print()
+
             for availabilityDomain in availabilityDomains:
                 try:
                     attemptCounter += 1
