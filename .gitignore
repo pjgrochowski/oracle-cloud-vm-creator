@@ -1,0 +1,17 @@
+# OS rules:
+Thumbs.db
+.DS_Store
+.directory
+
+# Python rules:
+__pycache__
+*.pyc
+*.egg-info
+build/
+dist/
+
+# IDE rules:
+.idea/
+
+# Project rules:
+config/
