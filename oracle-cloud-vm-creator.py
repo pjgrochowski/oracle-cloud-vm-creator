@@ -1,7 +1,7 @@
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, TypeAlias
+from typing import Dict, Iterator, List, TypeAlias
 
 import oci
 from dataclasses_json import DataClassJsonMixin, LetterCase, dataclass_json
@@ -64,36 +64,35 @@ class VmCreator:
     def _vmConfig(self) -> VmConfig:
         return self._config.vmConfig
 
-    def create(self) -> None:
-        attemptCounter = 0
-
+    def tryCreate(self, persistent: bool = False) -> None:
         existingVms = self._getExistingVms()
         if len(existingVms) > 0:
             print(" ===> VM already exists:", existingVms)
             return
 
-        while True:
+        for runNumber in self._makeRunCounter(persistent=persistent):
             availabilityDomains = self._getAvailabilityDomains()
-            print(f" ==> Detected {len(availabilityDomains)} availability domains:")
-            for availabilityDomain in availabilityDomains:
-                print(availabilityDomain)
-            print()
+            print(f" ==> Detected {len(availabilityDomains)} availability domains:\n%s\n" % '\n'.join(availabilityDomains))
 
-            for availabilityDomain in availabilityDomains:
+            for domainNumber, domainName in enumerate(availabilityDomains):
+                time.sleep(self._getCooldown(persistent=persistent))
                 try:
-                    attemptCounter += 1
-                    print(f" ==> Attempting to create VM:\n - trial='{attemptCounter}',\n - availabilityDomain='{availabilityDomain}'\n")
-                    response = self._requestCreation(availabilityDomain=availabilityDomain)
+                    attemptNumber = domainNumber + runNumber * len(availabilityDomains) + 1
+                    print(f" ==> Attempt {attemptNumber} to create VM. Using availability domain: '{domainName}'")
+                    response = self._requestCreation(availabilityDomain=domainName)
 
-                    self._awaitRunning(instanceId=response.data.id)
+                    instanceId = response.data.id
+                    print(f" ==> Instance {instanceId} created successfully!")
+
+                    if persistent:
+                        self._awaitRunning(instanceId=instanceId)
+
                     return
 
                 except ServiceError as ex:
                     print(f"ServiceError error: [{ex.status}]:'{ex.message}'\n")
                 except Exception as ex:
                     print(f"Exception occurred: {str(ex)}\n")
-                finally:
-                    time.sleep(30)
 
     def _requestCreation(self, availabilityDomain: str) -> oci.response.Response:
         return ComputeClient(self._ociConfig).launch_instance(
@@ -122,15 +121,19 @@ class VmCreator:
         )
 
     def _awaitRunning(self, instanceId: str) -> None:
-        print(f" ==> Instance {instanceId} created! Awaiting start...")
-        while True:
-            instance = ComputeClient(self._ociConfig).get_instance(instanceId).data
-            if instance.lifecycle_state == "RUNNING":
-                print(f" ==> Instance {instanceId} is running!")
-                break
+        try:
+            print(f" ==> Awaiting start...")
+            while True:
+                instance = ComputeClient(self._ociConfig).get_instance(instanceId).data
+                if instance.lifecycle_state == "RUNNING":
+                    print(f" ==> Instance {instanceId} is running!")
+                    break
 
-            print(instance)
-            time.sleep(30)
+                print(instance)
+                time.sleep(self._getCooldown(persistent=True))
+
+        except Exception as ex:
+            print(f"Exception occurred: {str(ex)}\n")
 
     def _getAvailabilityDomains(self) -> List[str]:
         identityClient = IdentityClient(self._ociConfig)
@@ -141,6 +144,18 @@ class VmCreator:
         return ComputeClient(self._ociConfig).list_instances(compartment_id=self._vmConfig.compartmentId).data
 
     @staticmethod
+    def _getCooldown(persistent: bool) -> int:
+        return 30 if persistent else 1
+
+    @staticmethod
+    def _makeRunCounter(persistent: bool) -> Iterator[int]:
+        counter = 0
+        yield counter
+        while persistent:
+            counter += 1
+            yield counter
+
+    @staticmethod
     def _loadConfig(cfgPath: Path) -> ScriptConfig:
         with open(cfgPath) as f:
             return ScriptConfig.from_json(f.read())
@@ -149,7 +164,7 @@ class VmCreator:
 def main() -> None:
     scriptDir = Path(__file__).parent
     vmCreator = VmCreator(cfgPath=scriptDir / 'config.json')
-    vmCreator.create()
+    vmCreator.tryCreate(persistent=True)
 
 
 if __name__ == '__main__':
