@@ -1,4 +1,5 @@
 import time
+from argparse import ArgumentParser
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterator, List, TypeAlias
@@ -70,9 +71,11 @@ class VmCreator:
             print(" ===> VM already exists:", existingVms)
             return
 
+        print(f" ===> Run mode: '{'persistent' if persistent else 'oneshot'}' (Cooldowns: {self._getCooldown(persistent=persistent)}s)\n")
+
         for runNumber in self._makeRunCounter(persistent=persistent):
             availabilityDomains = self._getAvailabilityDomains()
-            print(f" ==> Detected {len(availabilityDomains)} availability domains:\n%s\n" % '\n'.join(availabilityDomains))
+            print(f" ===> Detected {len(availabilityDomains)} availability domains:\n%s\n" % '\n'.join(availabilityDomains))
 
             for domainNumber, domainName in enumerate(availabilityDomains):
                 time.sleep(self._getCooldown(persistent=persistent))
@@ -162,9 +165,13 @@ class VmCreator:
 
 
 def main() -> None:
+    argParser = ArgumentParser(description='Oracle cloud Ampere VM creator')
+    argParser.add_argument('-p', '--persistent', help='Run in a loop until succeeds (includes longer cooldowns)', action='store_true')
+    args = argParser.parse_args()
+
     scriptDir = Path(__file__).parent
     vmCreator = VmCreator(cfgPath=scriptDir / 'config.json')
-    vmCreator.tryCreate(persistent=True)
+    vmCreator.tryCreate(persistent=args.persistent)
 
 
 if __name__ == '__main__':
