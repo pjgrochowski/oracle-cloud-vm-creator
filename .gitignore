@@ -14,4 +14,4 @@ dist/
 .idea/
 
 # Project rules:
-config/
+config.json
