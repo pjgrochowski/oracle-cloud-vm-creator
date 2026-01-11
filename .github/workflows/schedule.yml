@@ -3,7 +3,7 @@ name: Try to create VM
 on:
   schedule:
     # Minimum allow interval is 5 minutes.
-    - cron: '*/5 * * * *'
+    - cron: '*/30 * * * *'
   workflow_dispatch: # Allows to run script manually for testing.
 
 jobs:
@@ -32,3 +32,20 @@ jobs:
       - name: Run script
         run: python oracle-cloud-vm-creator.py
 
+      - name: Send Email on Success
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "[IMPORTANT][SUCCESS]: Periodic Job for ${{ github.repository }}"
+          to: ${{ secrets.MAIL_RECIPIENT }}
+          from: "GitHub Actions Bot <${{ secrets.MAIL_USERNAME }}>"
+          body: |
+            The Python script in ${{ github.repository }} ran successfully.
+            
+            Workflow: ${{ github.workflow }}
+            Run ID: ${{ github.run_id }}
