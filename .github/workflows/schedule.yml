@@ -1,0 +1,34 @@
+name: Try to create VM
+
+on:
+  schedule:
+    # Minimum allow interval is 5 minutes.
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Allows to run script manually for testing.
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip' # Automatically caches dependencies from: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Create config file
+        run: |
+          echo "$CONFIG_DATA" > config.json
+        env:
+          CONFIG_DATA: ${{ secrets.CONFIG_FILE_CONTENT }}
+
+      - name: Run script
+        run: python oracle-cloud-vm-creator.py
+
