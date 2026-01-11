@@ -1,3 +1,4 @@
+import sys
 import time
 from argparse import ArgumentParser
 from dataclasses import dataclass
@@ -90,7 +91,7 @@ class VmCreator:
                     if persistent:
                         self._awaitRunning(instanceId=instanceId)
 
-                    return
+                    sys.exit(0)
 
                 except ServiceError as ex:
                     print(f"ServiceError error: [{ex.status}]:'{ex.message}'\n")
@@ -172,6 +173,8 @@ def main() -> None:
     scriptDir = Path(__file__).parent
     vmCreator = VmCreator(cfgPath=scriptDir / 'config.json')
     vmCreator.tryCreate(persistent=args.persistent)
+
+    sys.exit(1)
 
 
 if __name__ == '__main__':
