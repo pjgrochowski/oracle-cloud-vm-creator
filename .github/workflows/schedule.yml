@@ -2,8 +2,8 @@ name: Try to create VM
 
 on:
   schedule:
-    # Minimum allow interval is 5 minutes.
-    - cron: '*/30 * * * *'
+    # Minimum allowed interval is 5 minutes.
+    - cron: '*/10 * * * *'
   workflow_dispatch: # Allows to run script manually for testing.
 
 jobs:
